@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/qlm-iot/qlm/df"
 )
 
 
@@ -120,6 +121,45 @@ func createEmptyReadRequest() []byte{
 </qlm:qlmEnvelope>`)
 }
 
+func createQLMMessage(id, name string) string{
+	objects := df.Objects{
+		Objects: []df.Object{
+			df.Object{
+				Id:   &df.QLMID{Text: id},
+				InfoItems: []df.InfoItem{
+					df.InfoItem{
+						Name: name,
+					},
+				},
+			},
+		},
+	}
+	data, _ := df.Marshal(objects)
+	return (string)(data)
+}
+
+func createQLMMessageWithValue(id, name, value string) string{
+	objects := df.Objects{
+		Objects: []df.Object{
+			df.Object{
+				Id:   &df.QLMID{Text: id},
+				InfoItems: []df.InfoItem{
+					df.InfoItem{
+						Name: name,
+						Values: []df.Value{
+							df.Value{
+								Text: value,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	data, _ := df.Marshal(objects)
+	return (string)(data)
+}
+
 func createReadRequest(id, name string) []byte{
 	return []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <qlm:qlmEnvelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -127,16 +167,10 @@ xmlns:qlm="QLMmi.xsd" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0"
 ttl="10">
 <qlm:read msgformat="QLM_mf.xsd">
 <qlm:msg xmlns="QLMdf.xsd" xsi:schemaLocation="QLMdf.xsd QLMdf.xsd">
-<Objects>
-<Object>
-<id>%s</id>
-<InfoItem name="%s">
-</InfoItem>
-</Object>
-</Objects>
+%s
 </qlm:msg>
 </qlm:read>
-</qlm:qlmEnvelope>`, id, name))
+</qlm:qlmEnvelope>`, createQLMMessage(id, name)))
 }
 
 func createSubscriptionRequest(id, name, interval string) []byte{
@@ -146,16 +180,10 @@ xmlns:qlm="QLMmi.xsd" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0"
 ttl="10">
 <qlm:read msgformat="QLM_mf.xsd" interval="%s">
 <qlm:msg xmlns="QLMdf.xsd" xsi:schemaLocation="QLMdf.xsd QLMdf.xsd">
-<Objects>
-<Object>
-<id>%s</id>
-<InfoItem name="%s">
-</InfoItem>
-</Object>
-</Objects>
+%s
 </qlm:msg>
 </qlm:read>
-</qlm:qlmEnvelope>`, interval, id, name))
+</qlm:qlmEnvelope>`, interval, createQLMMessage(id, name)))
 }
 
 func createReadSubscriptionRequest(requestId string) []byte{
@@ -187,13 +215,8 @@ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0" ttl="-1">
 <qlm:write msgformat="QLMdf" targetType="device">
 <qlm:msg xmlns="QLMdf.xsd" xsi:schemaLocation="QLMdf.xsd QLMdf.xsd">
-<Objects>
-<Object>
-<id>%s</id>
-<InfoItem name="%s"><value>%s</value></InfoItem>
-</Object>
-</Objects>
+%s
 </qlm:msg>
 </qlm:write>
-</qlm:qlmEnvelope>`, id, name, value))
+</qlm:qlmEnvelope>`, createQLMMessageWithValue(id, name, value)))
 }
