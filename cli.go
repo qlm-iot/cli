@@ -4,60 +4,46 @@ import (
 	"flag"
 	"fmt"
 	"github.com/qlm-iot/qlm/df"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 )
 
-
-func mockserver(sendPtr, receivePtr *chan []byte){
+func httpserverconnector(address string, sendPtr, receivePtr *chan []byte){
 	send := *sendPtr
 	receive := *receivePtr
 	for {
 		select {
 		case raw_msg := <-send:
 			msg := string(raw_msg)
-			if msg == string(createEmptyReadRequest()){
-				receive <- []byte(`<?xml version="1.0" encoding="UTF-8"?><qlmEnvelope version="0.2" ttl="0"><response><result><return returnCode="200"></return></result></response></qlmEnvelope>`)
-			}else if msg == string(createReadRequest("SmartFridge1", "PowerConsumption")){
-				receive <- []byte(`<qlm:qlmEnvelope xmlns:qlm="QLMmi.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0" ttl="10"><qlm:response><qlm:result msgformat="QLMdf"><qlm:return returnCode="200"></qlm:return><qlm:msg xmlns="QLMdf.xsd" xsi:schemaLocation="QLMdf.xsd QLMdf.xsd"><Objects><Object><id>SmartFridge1</id><InfoItem name="PowerConsumption"><value type="xs:int" unixTime="5453563">43</value></InfoItem></Object></Objects></qlm:msg></qlm:result></qlm:response>`)
-			}else if msg == string(createSubscriptionRequest("SmartFridge1", "PowerConsumption", "-1")){
-				receive <- []byte(`<qlm:qlmEnvelope xmlns:qlm="QLMmi.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0" ttl="0"><qlm:response><qlm:result><qlm:return returnCode="200"></qlm:return><qlm:requestId>REQ1</qlm:requestId></qlm:result></qlm:response></qlm:qlmEnvelope>`)
-			}else if msg == string(createReadSubscriptionRequest("REQ1")){
-				receive <- []byte(`<qlm:qlmEnvelope xmlns:qlm="QLMmi.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0" ttl="10"><qlm:response><qlm:result msgformat="QLMdf"><qlm:return returnCode="200"></qlm:return><qlm:requestId>REQ1</qlm:requestId><qlm:msg xmlns="QLMdf.xsd" xsi:schemaLocation="QLMdf.xsd QLMdf.xsd"><Objects><Object><id>SmartFridge1</id><InfoItem name="PowerConsumption"><value type="xs:int" unixTime="5453563">43</value><value type="xs:int" unixTime="5453584">47</value></InfoItem></Object></Objects></qlm:msg></qlm:result></qlm:response>`)
-			}else if msg == string(createWriteRequest("SmartFridge1", "FridgeTemperatureSetpoint", "6")){
-				receive <- []byte(`<qlm:qlmEnvelope xmlns:qlm="QLMmi.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0" ttl="0"><qlm:response><qlm:result><qlm:return returnCode="200"></qlm:return></qlm:result></qlm:response></qlm:qlmEnvelope>`)
-			}else if msg == string(createCancelSubscriptionRequest("REQ1")){
-				receive <- []byte(`<qlm:qlmEnvelope xmlns:qlm="QLMmi.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0" ttl="0"><qlm:response><qlm:result><qlm:return returnCode="200"></qlm:return></qlm:result></qlm:response></qlm:qlmEnvelope>`)
+			data := url.Values{}
+		    data.Set("msg", msg)
+			response, err := http.PostForm(address, data)
+			if err == nil{
+				defer response.Body.Close()
+				content, err := ioutil.ReadAll(response.Body)
+				if err == nil{
+					receive <- content
+				}else{
+					receive <- []byte(err.Error())
+				}
 			}else{
-				// Response 404
-				receive <- []byte(`<qlm:qlmEnvelope xmlns:qlm="QLMmi.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0" ttl="0"><qlm:response><qlm:result><qlm:return returnCode="404"></qlm:return></qlm:result></qlm:response></qlm:qlmEnvelope>`)
+				receive <- []byte(err.Error())
 			}
 		}
 	}
 }
-func createServerConnection(send, receive *chan []byte){
-	go mockserver(send, receive)
+func createServerConnection(address string, send, receive *chan []byte){
+	go httpserverconnector(address, send, receive)
 }
 /*
 Usage
-cli test
-cli read id name
-cli write id name value
-cli order id name interval
-cli order-get req_id
-cli order-cancel req_id
-
-TODO:
-cli read-meta path ?
-
-
-Supported commands:
-
-cli test
-cli read SmartFridge1 PowerConsumption
-cli order SmartFridge1 PowerConsumption -1
-cli order-get REQ1
-cli order-cancel REQ1
-cli write SmartFridge1 FridgeTemperatureSetpoint 6
-
+cli [--server http://localhost/qlm/] test
+cli [--server http://localhost/qlm/] read id name
+cli [--server http://localhost/qlm/] write id name value
+cli [--server http://localhost/qlm/] order id name interval
+cli [--server http://localhost/qlm/] order-get req_id
+cli [--server http://localhost/qlm/] order-cancel req_id
 */
 
 func main() {
@@ -67,9 +53,12 @@ func main() {
 	send = make(chan []byte)
 	receive = make(chan []byte)
 
+	var address string
+	flag.StringVar(&address, "server", "http://localhost/qlm/", "Server address")
+
 	flag.Parse()
 
-	createServerConnection(&send, &receive)
+	createServerConnection(address, &send, &receive)
 
 	command := flag.Arg(0)
 	switch command {
@@ -108,7 +97,7 @@ func main() {
 	}
 
 	msg := <-receive
-	fmt.Println("Received: ", string(msg))
+	fmt.Println(string(msg))
 }
 
 func createEmptyReadRequest() []byte{
