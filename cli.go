@@ -4,9 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"github.com/qlm-iot/qlm/df"
+	"github.com/qlm-iot/qlm/mi"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 func httpserverconnector(address string, sendPtr, receivePtr *chan []byte){
@@ -79,7 +81,7 @@ func main() {
 		case "order": {
 			id := flag.Arg(1)
 			name := flag.Arg(2)
-			interval := flag.Arg(3)
+			interval, _ := strconv.ParseFloat(flag.Arg(3), 32)
 			send <- createSubscriptionRequest(id, name, interval)
 		}
 		case "order-get": {
@@ -101,13 +103,12 @@ func main() {
 }
 
 func createEmptyReadRequest() []byte{
-	return []byte(`<?xml version="1.0" encoding="UTF-8"?>
-<qlm:qlmEnvelope version="1.0" ttl="10">
-<qlm:read>
-<qlm:msg>
-</qlm:msg>
-</qlm:read>
-</qlm:qlmEnvelope>`)
+	ret, _ := mi.Marshal(mi.QlmEnvelope{
+		Version: "1.0",
+		Ttl:     -1,
+		Read:    &mi.ReadRequest{},
+	})
+	return ret
 }
 
 func createQLMMessage(id, name string) string{
@@ -150,62 +151,72 @@ func createQLMMessageWithValue(id, name, value string) string{
 }
 
 func createReadRequest(id, name string) []byte{
-	return []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<qlm:qlmEnvelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xmlns:qlm="QLMmi.xsd" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0"
-ttl="10">
-<qlm:read msgformat="QLM_mf.xsd">
-<qlm:msg xmlns="QLMdf.xsd" xsi:schemaLocation="QLMdf.xsd QLMdf.xsd">
-%s
-</qlm:msg>
-</qlm:read>
-</qlm:qlmEnvelope>`, createQLMMessage(id, name)))
+	ret, _ := mi.Marshal(mi.QlmEnvelope{
+		Version: "1.0",
+		Ttl:     -1,
+		Read: &mi.ReadRequest{
+			MsgFormat:  "QLMdf",
+			Message:    &mi.Message{
+				Data: createQLMMessage(id, name),
+			},
+		},
+	})
+	return ret
 }
 
-func createSubscriptionRequest(id, name, interval string) []byte{
-	return []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<qlm:qlmEnvelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xmlns:qlm="QLMmi.xsd" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0"
-ttl="10">
-<qlm:read msgformat="QLM_mf.xsd" interval="%s">
-<qlm:msg xmlns="QLMdf.xsd" xsi:schemaLocation="QLMdf.xsd QLMdf.xsd">
-%s
-</qlm:msg>
-</qlm:read>
-</qlm:qlmEnvelope>`, interval, createQLMMessage(id, name)))
+func createSubscriptionRequest(id, name string, interval float64) []byte{
+	ret, _ := mi.Marshal(mi.QlmEnvelope{
+		Version: "1.0",
+		Ttl:     -1,
+		Read: &mi.ReadRequest{
+			MsgFormat:  "QLMdf",
+			Interval:   interval,
+			Message:    &mi.Message{
+				Data: createQLMMessage(id, name),
+			},
+		},
+	})
+	return ret
 }
 
 func createReadSubscriptionRequest(requestId string) []byte{
-	return []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<qlm:qlmEnvelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xmlns:qlm="QLMmi.xsd" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0"
-ttl="10">
-<qlm:read msgformat="QLM_mf.xsd">
-<qlm:requestId>%s</qlm:requestId>
-</qlm:read>
-</qlm:qlmEnvelope>`, requestId))
+	ret, _ := mi.Marshal(mi.QlmEnvelope{
+		Version: "1.0",
+		Ttl:     -1,
+		Read: &mi.ReadRequest{
+			MsgFormat:  "QLMdf",
+			RequestIds: []mi.Id{
+				mi.Id{Text: requestId},
+			},
+		},
+	})
+	return ret
 }
 
 func createCancelSubscriptionRequest(requestId string) []byte{
-	return []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<qlm:qlmEnvelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xmlns:qlm="QLMmi.xsd" xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0"
-ttl="10">
-<qlm:cancel>
-<qlm:requestId>%s</qlm:requestId>
-</qlm:cancel>
-</qlm:qlmEnvelope>`, requestId))
+	ret, _ := mi.Marshal(mi.QlmEnvelope{
+		Version: "1.0",
+		Ttl:     -1,
+		Cancel:  &mi.CancelRequest{
+			RequestIds: []mi.Id{
+				mi.Id{Text: requestId},
+			},
+		},
+	})
+	return ret
 }
 
 func createWriteRequest(id, name, value string) []byte{
-	return []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<qlm:qlmEnvelope xmlns:qlm="QLMmi.xsd"
-xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xsi:schemaLocation="QLMmi.xsd QLMmi.xsd" version="1.0" ttl="-1">
-<qlm:write msgformat="QLMdf" targetType="device">
-<qlm:msg xmlns="QLMdf.xsd" xsi:schemaLocation="QLMdf.xsd QLMdf.xsd">
-%s
-</qlm:msg>
-</qlm:write>
-</qlm:qlmEnvelope>`, createQLMMessageWithValue(id, name, value)))
+	ret, _ := mi.Marshal(mi.QlmEnvelope{
+		Version: "1.0",
+		Ttl:     -1,
+		Write:   &mi.WriteRequest{
+			MsgFormat:  "QLMdf",
+			TargetType: "device",
+			Message: &mi.Message{
+				Data: createQLMMessageWithValue(id, name, value),
+			},
+		},
+	})
+	return ret
 }
