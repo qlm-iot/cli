@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-func httpserverconnector(address string, sendPtr, receivePtr *chan []byte){
+func httpserverconnector(address string, sendPtr, receivePtr *chan []byte) {
 	send := *sendPtr
 	receive := *receivePtr
 	for {
@@ -23,21 +23,21 @@ func httpserverconnector(address string, sendPtr, receivePtr *chan []byte){
 			data := url.Values{}
 			data.Set("msg", msg)
 			response, err := http.PostForm(address, data)
-			if err == nil{
+			if err == nil {
 				defer response.Body.Close()
 				content, err := ioutil.ReadAll(response.Body)
-				if err == nil{
+				if err == nil {
 					receive <- content
-				}else{
+				} else {
 					receive <- []byte(err.Error())
 				}
-			}else{
+			} else {
 				receive <- []byte(err.Error())
 			}
 		}
 	}
 }
-func wsServerConnector(address string, sendPtr, receivePtr *chan []byte){
+func wsServerConnector(address string, sendPtr, receivePtr *chan []byte) {
 	send := *sendPtr
 	receive := *receivePtr
 	for {
@@ -46,32 +46,33 @@ func wsServerConnector(address string, sendPtr, receivePtr *chan []byte){
 			var h http.Header
 
 			conn, _, err := websocket.DefaultDialer.Dial(address, h)
-			if err == nil{
+			if err == nil {
 				if err := conn.WriteMessage(websocket.BinaryMessage, raw_msg); err != nil {
 					receive <- []byte(err.Error())
 				}
 				_, content, err := conn.ReadMessage()
 				if err == nil {
 					receive <- content
-				}else{
+				} else {
 					receive <- []byte(err.Error())
 				}
-			}else{
+			} else {
 				receive <- []byte(err.Error())
 			}
 		}
 	}
 }
-func createServerConnection(address string, send, receive *chan []byte) bool{
-	if strings.HasPrefix(address, "http://"){
+func createServerConnection(address string, send, receive *chan []byte) bool {
+	if strings.HasPrefix(address, "http://") {
 		go httpserverconnector(address, send, receive)
-	}else if strings.HasPrefix(address, "ws://"){
+	} else if strings.HasPrefix(address, "ws://") {
 		go wsServerConnector(address, send, receive)
-	}else{
+	} else {
 		return false
 	}
 	return true
 }
+
 /*
 Usage
 cli [--server http://localhost/qlm/] test
@@ -94,42 +95,49 @@ func main() {
 
 	flag.Parse()
 
-	if !createServerConnection(address, &send, &receive){
+	if !createServerConnection(address, &send, &receive) {
 		fmt.Println("Unsupported server protocol")
 		return
 	}
 
 	command := flag.Arg(0)
 	switch command {
-		case "test": {
+	case "test":
+		{
 			send <- createEmptyReadRequest()
 		}
-		case "read": {
+	case "read":
+		{
 			id := flag.Arg(1)
 			name := flag.Arg(2)
 			send <- createReadRequest(id, name)
 		}
-		case "write":{
+	case "write":
+		{
 			id := flag.Arg(1)
 			name := flag.Arg(2)
 			value := flag.Arg(3)
 			send <- createWriteRequest(id, name, value)
 		}
-		case "order": {
+	case "order":
+		{
 			id := flag.Arg(1)
 			name := flag.Arg(2)
 			interval, _ := strconv.ParseFloat(flag.Arg(3), 32)
 			send <- createSubscriptionRequest(id, name, interval)
 		}
-		case "order-get": {
+	case "order-get":
+		{
 			requestId := flag.Arg(1)
 			send <- createReadSubscriptionRequest(requestId)
 		}
-		case "order-cancel": {
+	case "order-cancel":
+		{
 			requestId := flag.Arg(1)
 			send <- createCancelSubscriptionRequest(requestId)
 		}
-		default: {
+	default:
+		{
 			fmt.Println("Unknown command")
 			return
 		}
@@ -139,7 +147,7 @@ func main() {
 	fmt.Println(string(msg))
 }
 
-func createEmptyReadRequest() []byte{
+func createEmptyReadRequest() []byte {
 	ret, _ := mi.Marshal(mi.QlmEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
@@ -148,11 +156,11 @@ func createEmptyReadRequest() []byte{
 	return ret
 }
 
-func createQLMMessage(id, name string) string{
+func createQLMMessage(id, name string) string {
 	objects := df.Objects{
 		Objects: []df.Object{
 			df.Object{
-				Id:   &df.QLMID{Text: id},
+				Id: &df.QLMID{Text: id},
 				InfoItems: []df.InfoItem{
 					df.InfoItem{
 						Name: name,
@@ -165,11 +173,11 @@ func createQLMMessage(id, name string) string{
 	return (string)(data)
 }
 
-func createQLMMessageWithValue(id, name, value string) string{
+func createQLMMessageWithValue(id, name, value string) string {
 	objects := df.Objects{
 		Objects: []df.Object{
 			df.Object{
-				Id:   &df.QLMID{Text: id},
+				Id: &df.QLMID{Text: id},
 				InfoItems: []df.InfoItem{
 					df.InfoItem{
 						Name: name,
@@ -187,13 +195,13 @@ func createQLMMessageWithValue(id, name, value string) string{
 	return (string)(data)
 }
 
-func createReadRequest(id, name string) []byte{
+func createReadRequest(id, name string) []byte {
 	ret, _ := mi.Marshal(mi.QlmEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
 		Read: &mi.ReadRequest{
-			MsgFormat:  "QLMdf",
-			Message:    &mi.Message{
+			MsgFormat: "QLMdf",
+			Message: &mi.Message{
 				Data: createQLMMessage(id, name),
 			},
 		},
@@ -201,14 +209,14 @@ func createReadRequest(id, name string) []byte{
 	return ret
 }
 
-func createSubscriptionRequest(id, name string, interval float64) []byte{
+func createSubscriptionRequest(id, name string, interval float64) []byte {
 	ret, _ := mi.Marshal(mi.QlmEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
 		Read: &mi.ReadRequest{
-			MsgFormat:  "QLMdf",
-			Interval:   interval,
-			Message:    &mi.Message{
+			MsgFormat: "QLMdf",
+			Interval:  interval,
+			Message: &mi.Message{
 				Data: createQLMMessage(id, name),
 			},
 		},
@@ -216,12 +224,12 @@ func createSubscriptionRequest(id, name string, interval float64) []byte{
 	return ret
 }
 
-func createReadSubscriptionRequest(requestId string) []byte{
+func createReadSubscriptionRequest(requestId string) []byte {
 	ret, _ := mi.Marshal(mi.QlmEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
 		Read: &mi.ReadRequest{
-			MsgFormat:  "QLMdf",
+			MsgFormat: "QLMdf",
 			RequestIds: []mi.Id{
 				mi.Id{Text: requestId},
 			},
@@ -230,11 +238,11 @@ func createReadSubscriptionRequest(requestId string) []byte{
 	return ret
 }
 
-func createCancelSubscriptionRequest(requestId string) []byte{
+func createCancelSubscriptionRequest(requestId string) []byte {
 	ret, _ := mi.Marshal(mi.QlmEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
-		Cancel:  &mi.CancelRequest{
+		Cancel: &mi.CancelRequest{
 			RequestIds: []mi.Id{
 				mi.Id{Text: requestId},
 			},
@@ -243,11 +251,11 @@ func createCancelSubscriptionRequest(requestId string) []byte{
 	return ret
 }
 
-func createWriteRequest(id, name, value string) []byte{
+func createWriteRequest(id, name, value string) []byte {
 	ret, _ := mi.Marshal(mi.QlmEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
-		Write:   &mi.WriteRequest{
+		Write: &mi.WriteRequest{
 			MsgFormat:  "QLMdf",
 			TargetType: "device",
 			Message: &mi.Message{
