@@ -3,12 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/gorilla/websocket"
 	"github.com/qlm-iot/qlm/df"
 	"github.com/qlm-iot/qlm/mi"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 func httpserverconnector(address string, sendPtr, receivePtr *chan []byte){
@@ -19,7 +21,7 @@ func httpserverconnector(address string, sendPtr, receivePtr *chan []byte){
 		case raw_msg := <-send:
 			msg := string(raw_msg)
 			data := url.Values{}
-		    data.Set("msg", msg)
+			data.Set("msg", msg)
 			response, err := http.PostForm(address, data)
 			if err == nil{
 				defer response.Body.Close()
@@ -35,8 +37,40 @@ func httpserverconnector(address string, sendPtr, receivePtr *chan []byte){
 		}
 	}
 }
-func createServerConnection(address string, send, receive *chan []byte){
-	go httpserverconnector(address, send, receive)
+func wsServerConnector(address string, sendPtr, receivePtr *chan []byte){
+	send := *sendPtr
+	receive := *receivePtr
+	for {
+		select {
+		case raw_msg := <-send:
+			var h http.Header
+
+			conn, _, err := websocket.DefaultDialer.Dial(address, h)
+			if err == nil{
+				if err := conn.WriteMessage(websocket.BinaryMessage, raw_msg); err != nil {
+					receive <- []byte(err.Error())
+				}
+				_, content, err := conn.ReadMessage()
+				if err == nil {
+					receive <- content
+				}else{
+					receive <- []byte(err.Error())
+				}
+			}else{
+				receive <- []byte(err.Error())
+			}
+		}
+	}
+}
+func createServerConnection(address string, send, receive *chan []byte) bool{
+	if strings.HasPrefix(address, "http://"){
+		go httpserverconnector(address, send, receive)
+	}else if strings.HasPrefix(address, "ws://"){
+		go wsServerConnector(address, send, receive)
+	}else{
+		return false
+	}
+	return true
 }
 /*
 Usage
@@ -60,7 +94,10 @@ func main() {
 
 	flag.Parse()
 
-	createServerConnection(address, &send, &receive)
+	if !createServerConnection(address, &send, &receive){
+		fmt.Println("Unsupported server protocol")
+		return
+	}
 
 	command := flag.Arg(0)
 	switch command {
