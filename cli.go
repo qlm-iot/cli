@@ -6,16 +6,6 @@ import (
 	"strconv"
 )
 
-/*
-Usage
-cli [--server http://localhost/qlm/] test
-cli [--server http://localhost/qlm/] read id name
-cli [--server http://localhost/qlm/] write id name value
-cli [--server http://localhost/qlm/] order id name interval
-cli [--server http://localhost/qlm/] order-get req_id
-cli [--server http://localhost/qlm/] order-cancel req_id
-*/
-
 func main() {
 	var receive chan []byte
 	var send chan []byte
@@ -29,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	if !createServerConnection(address, &send, &receive) {
-		fmt.Println("Unsupported server protocol")
+		fmt.Println("Unsupported server protocol. Supported protocols are http and ws.")
 		return
 	}
 
@@ -71,7 +61,14 @@ func main() {
 		}
 	default:
 		{
-			fmt.Println("Unknown command")
+			fmt.Println("Unknown command.")
+			fmt.Println("Usage:")
+			fmt.Println("cli [--server http://localhost/qlm/] test")
+			fmt.Println("cli [--server http://localhost/qlm/] read id name")
+			fmt.Println("cli [--server http://localhost/qlm/] write id name value")
+			fmt.Println("cli [--server http://localhost/qlm/] order id name interval")
+			fmt.Println("cli [--server http://localhost/qlm/] order-get req_id")
+			fmt.Println("cli [--server http://localhost/qlm/] order-cancel req_id")
 			return
 		}
 	}
