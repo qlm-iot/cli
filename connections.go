@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func httpserverconnector(address string, sendPtr, receivePtr *chan []byte) {
+func httpServerConnector(address string, sendPtr, receivePtr *chan []byte) {
 	send := *sendPtr
 	receive := *receivePtr
 	for {
@@ -59,7 +59,7 @@ func wsServerConnector(address string, sendPtr, receivePtr *chan []byte) {
 }
 func createServerConnection(address string, send, receive *chan []byte) bool {
 	if strings.HasPrefix(address, "http://") {
-		go httpserverconnector(address, send, receive)
+		go httpServerConnector(address, send, receive)
 	} else if strings.HasPrefix(address, "ws://") {
 		go wsServerConnector(address, send, receive)
 	} else {
