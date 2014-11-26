@@ -6,7 +6,7 @@ import (
 )
 
 func createEmptyReadRequest() []byte {
-	ret, _ := mi.Marshal(mi.QlmEnvelope{
+	ret, _ := mi.Marshal(mi.OmiEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
 		Read:    &mi.ReadRequest{},
@@ -54,7 +54,7 @@ func createQLMMessageWithValue(id, name, value string) string {
 }
 
 func createReadRequest(id, name string) []byte {
-	ret, _ := mi.Marshal(mi.QlmEnvelope{
+	ret, _ := mi.Marshal(mi.OmiEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
 		Read: &mi.ReadRequest{
@@ -68,7 +68,7 @@ func createReadRequest(id, name string) []byte {
 }
 
 func createSubscriptionRequest(id, name string, interval float64) []byte {
-	ret, _ := mi.Marshal(mi.QlmEnvelope{
+	ret, _ := mi.Marshal(mi.OmiEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
 		Read: &mi.ReadRequest{
@@ -83,7 +83,7 @@ func createSubscriptionRequest(id, name string, interval float64) []byte {
 }
 
 func createReadSubscriptionRequest(requestId string) []byte {
-	ret, _ := mi.Marshal(mi.QlmEnvelope{
+	ret, _ := mi.Marshal(mi.OmiEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
 		Read: &mi.ReadRequest{
@@ -97,7 +97,7 @@ func createReadSubscriptionRequest(requestId string) []byte {
 }
 
 func createCancelSubscriptionRequest(requestId string) []byte {
-	ret, _ := mi.Marshal(mi.QlmEnvelope{
+	ret, _ := mi.Marshal(mi.OmiEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
 		Cancel: &mi.CancelRequest{
@@ -110,7 +110,7 @@ func createCancelSubscriptionRequest(requestId string) []byte {
 }
 
 func createWriteRequest(id, name, value string) []byte {
-	ret, _ := mi.Marshal(mi.QlmEnvelope{
+	ret, _ := mi.Marshal(mi.OmiEnvelope{
 		Version: "1.0",
 		Ttl:     -1,
 		Write: &mi.WriteRequest{
