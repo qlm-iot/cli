@@ -18,7 +18,7 @@ func TestCreateHttpServerConnection(t *testing.T) {
 	send := make(chan []byte)
 	recv := make(chan []byte)
 
-	if assert.Equal(t, createServerConnection(ts.URL, &send, &recv), true) {
+	if assert.Nil(t, createServerConnection(ts.URL, &send, &recv)) {
 		send <- []byte("REQUEST")
 		response := <-recv
 		assert.Equal(t, "RESPONSE", string(response))

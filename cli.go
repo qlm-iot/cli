@@ -18,8 +18,8 @@ func main() {
 
 	flag.Parse()
 
-	if !createServerConnection(address, &send, &receive) {
-		fmt.Println("Unsupported server protocol. Supported protocols are http and ws.")
+	if err := createServerConnection(address, &send, &receive); err != nil {
+		fmt.Println(err)
 		return
 	}
 

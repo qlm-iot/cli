@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/gorilla/websocket"
 	"io/ioutil"
 	"net/http"
@@ -13,8 +14,8 @@ func httpServerConnector(address string, sendPtr, receivePtr *chan []byte) {
 	receive := *receivePtr
 	for {
 		select {
-		case raw_msg := <-send:
-			msg := string(raw_msg)
+		case rawMsg := <-send:
+			msg := string(rawMsg)
 			data := url.Values{}
 			data.Set("msg", msg)
 			response, err := http.PostForm(address, data)
@@ -37,12 +38,12 @@ func wsServerConnector(address string, sendPtr, receivePtr *chan []byte) {
 	receive := *receivePtr
 	for {
 		select {
-		case raw_msg := <-send:
+		case rawMsg := <-send:
 			var h http.Header
 
 			conn, _, err := websocket.DefaultDialer.Dial(address, h)
 			if err == nil {
-				if err := conn.WriteMessage(websocket.BinaryMessage, raw_msg); err != nil {
+				if err := conn.WriteMessage(websocket.BinaryMessage, rawMsg); err != nil {
 					receive <- []byte(err.Error())
 				}
 				_, content, err := conn.ReadMessage()
@@ -57,13 +58,13 @@ func wsServerConnector(address string, sendPtr, receivePtr *chan []byte) {
 		}
 	}
 }
-func createServerConnection(address string, send, receive *chan []byte) bool {
+func createServerConnection(address string, send, receive *chan []byte) error {
 	if strings.HasPrefix(address, "http://") {
 		go httpServerConnector(address, send, receive)
 	} else if strings.HasPrefix(address, "ws://") {
 		go wsServerConnector(address, send, receive)
 	} else {
-		return false
+		return errors.New("Unsupported server protocol. Supported protocols are http and ws.")
 	}
-	return true
+	return nil
 }
